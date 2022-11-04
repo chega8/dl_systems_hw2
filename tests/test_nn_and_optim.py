@@ -1,10 +1,11 @@
 import sys
-sys.path.append("./python")
+sys.path.append('./python')
+sys.path.append('./apps')
+
 import numpy as np
 import needle as ndl
 import needle.nn as nn
 
-sys.path.append("./apps")
 from mlp_resnet import *
 
 import mugrade
@@ -454,17 +455,16 @@ def test_op_logsumexp_backward_5():
 
 
 def submit_op_logsumexp():
-    mugrade.submit(logsumexp_forward((2,2,2), None))
+    mugrade.submit(logsumexp_forward((2,2,2), None)) #
     mugrade.submit(logsumexp_forward((1,2,3), (0,)))
     mugrade.submit(logsumexp_forward((2,3,3),(1,2)))
-    mugrade.submit(logsumexp_forward((1,2,2,2,2), (1,2,3,4)))
+    mugrade.submit(logsumexp_forward((1,2,2,2,2), (1,2,3,4))) #
     mugrade.submit(logsumexp_forward((1,2,2,2,2), (0,1,3)))
     mugrade.submit(logsumexp_backward((2,2,2), None))
     mugrade.submit(logsumexp_backward((1,2,3), (0,)))
     mugrade.submit(logsumexp_backward((2,3,3),(1,2)))
     mugrade.submit(logsumexp_backward((1,2,2,2,2), (1,2,3,4)))
     mugrade.submit(logsumexp_backward((1,2,2,2,2), (0,1,3)))
-
 
 
 def test_op_logsumexp_backward_4():
@@ -983,6 +983,8 @@ def test_optim_sgd_z_memory_check_1():
         np.array(387), rtol=1e-5, atol=1000)
 
 def submit_optim_sgd():
+    loss = learn_model_1d(48, 16, lambda z: nn.Sequential(nn.Linear(48, 32), nn.ReLU(), nn.BatchNorm1d(32), nn.Linear(32, 16)), ndl.optim.SGD, lr=0.01, momentum=0.0, weight_decay=0.01, epochs=2)
+    print('loss', loss)
     mugrade.submit(learn_model_1d(48, 17, lambda z: nn.Sequential(nn.Linear(48, 32), nn.ReLU(), nn.Linear(32, 17)), ndl.optim.SGD, lr=0.03, momentum=0.0, epochs=2))
     mugrade.submit(learn_model_1d(48, 16, lambda z: nn.Sequential(nn.Linear(48, 32), nn.ReLU(), nn.Linear(32, 16)), ndl.optim.SGD, lr=0.01, momentum=0.9, epochs=2))
     mugrade.submit(learn_model_1d(48, 16, lambda z: nn.Sequential(nn.Linear(48, 32), nn.ReLU(), nn.BatchNorm1d(32), nn.Linear(32, 16)), ndl.optim.SGD, lr=0.01, momentum=0.0, weight_decay=0.01, epochs=2))
