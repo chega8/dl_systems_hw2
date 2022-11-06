@@ -1,5 +1,6 @@
 import numpy as np
 from .autograd import Tensor
+import gzip
 
 from typing import Iterator, Optional, List, Sized, Union, Iterable, Any
 
@@ -10,7 +11,7 @@ class Transform:
 
 
 class RandomFlipHorizontal(Transform):
-    def __init__(self, p = 0.5):
+    def __init__(self, p=0.5):
         self.p = p
 
     def __call__(self, img):
@@ -24,7 +25,10 @@ class RandomFlipHorizontal(Transform):
         """
         flip_img = np.random.rand() < self.p
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        if flip_img:
+            return np.fliplr(img)
+
+        return img
         ### END YOUR SOLUTION
 
 
@@ -33,16 +37,35 @@ class RandomCrop(Transform):
         self.padding = padding
 
     def __call__(self, img):
-        """ Zero pad and then randomly crop an image.
+        """Zero pad and then randomly crop an image.
         Args:
              img: H x W x C NDArray of an image
-        Return 
+        Return
             H x W x C NAArray of cliped image
         Note: generate the image shifted by shift_x, shift_y specified below
         """
-        shift_x, shift_y = np.random.randint(low=-self.padding, high=self.padding+1, size=2)
+        shift_x, shift_y = np.random.randint(
+            low=-self.padding, high=self.padding + 1, size=2
+        )
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        h, w, c = img.shape
+        padded_img = img
+        pad_h = np.zeros((np.abs(shift_x), w, c))
+        if shift_x < 0:
+            padded_img = np.vstack((pad_h, padded_img))
+            padded_img = padded_img[:shift_x, :]
+        else:
+            padded_img = np.vstack((img, pad_h))
+            padded_img = padded_img[shift_x:, :]
+
+        pad_w = np.zeros((h, np.abs(shift_y), c))
+        if shift_y < 0:
+            padded_img = np.hstack((pad_w, padded_img))
+            padded_img = padded_img[:, :shift_y]
+        else:
+            padded_img = np.hstack((padded_img, pad_w))
+            padded_img = padded_img[:, shift_y:]
+        return padded_img
         ### END YOUR SOLUTION
 
 
@@ -81,7 +104,7 @@ class DataLoader:
             (default: ``1``).
         shuffle (bool, optional): set to ``True`` to have the data reshuffled
             at every epoch (default: ``False``).
-     """
+    """
     dataset: Dataset
     batch_size: Optional[int]
 
@@ -96,18 +119,32 @@ class DataLoader:
         self.shuffle = shuffle
         self.batch_size = batch_size
         if not self.shuffle:
-            self.ordering = np.array_split(np.arange(len(dataset)), 
-                                           range(batch_size, len(dataset), batch_size))
+            self.ordering = np.array_split(
+                np.arange(len(dataset)), range(batch_size, len(dataset), batch_size)
+            )
 
     def __iter__(self):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.counter = 0
+        if self.shuffle:
+            idxs = np.arange(len(self.dataset))
+            np.random.shuffle(idxs)
+            self.ordering = np.array_split(
+                idxs,
+                range(self.batch_size, len(self.dataset), self.batch_size),
+            )
         ### END YOUR SOLUTION
         return self
 
     def __next__(self):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        if self.counter < len(self.ordering):
+            batch_idx = self.ordering[self.counter]
+            batch = self.dataset[batch_idx]
+            self.counter += 1
+            return tuple([Tensor(b) for b in batch])
+        else:
+            raise StopIteration
         ### END YOUR SOLUTION
 
 
@@ -119,18 +156,37 @@ class MNISTDataset(Dataset):
         transforms: Optional[List] = None,
     ):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.image_filename = image_filename
+        self.label_filename = label_filename
+        super().__init__(transforms)
+
+        num_images = 60000
+        with gzip.open(image_filename) as bytestream:
+            bytestream.read(16)
+            buf = bytestream.read(28 * 28 * num_images)
+            data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+            self.data = data.reshape(-1, 28, 28, 1)
+            self.data = self.data / 255.0
+
+        with gzip.open(label_filename) as bytestream:
+            bytestream.read(8)
+            buf = bytestream.read(1 * num_images)
+            self.labels = np.frombuffer(buf, dtype=np.uint8)
         ### END YOUR SOLUTION
 
     def __getitem__(self, index) -> object:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        x = self.data[index]
+        if self.transforms is not None:
+            x = self.apply_transforms(x)
+        return x, self.labels[index]
         ### END YOUR SOLUTION
 
     def __len__(self) -> int:
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return len(self.labels)
         ### END YOUR SOLUTION
+
 
 class NDArrayDataset(Dataset):
     def __init__(self, *arrays):
