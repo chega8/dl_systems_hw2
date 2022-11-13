@@ -457,5 +457,4 @@ def softmax(x):
 
 def softmax_tensor(x):
     z = exp(x)
-    shape = z.shape
     return z / summation(z)

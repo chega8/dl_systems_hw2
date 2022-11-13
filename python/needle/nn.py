@@ -237,10 +237,10 @@ class Dropout(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        if self.training:
-            probs = init.randb(*x.shape, p=1 - self.p, device=x.device)
-            probs /= 1 - self.p
-            return x * probs
+        if self.training and self.p > 0.0:
+            shape = x.shape
+            mask = init.randb(*shape, p=(1-self.p), dtype='float32', device=x.device)
+            x = ops.mul_scalar(ops.multiply(mask, x), 1 / (1 - self.p))
         return x
         ### END YOUR SOLUTION
 
